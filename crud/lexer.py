@@ -113,7 +113,7 @@ class Lexer:
 
                 if current == "*" and self._match("/"):
                     return
-            raise LexError("komentar blok belum didukung", line, col)
+            raise LexError("komentar blok tidak ditutup", line, col)
         if ch in _SINGLE:
             self._add(_SINGLE[ch], ch, line, col)
             return

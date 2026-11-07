@@ -184,4 +184,10 @@ dan `_delete` secara berdampingan, lalu menjalankan contoh di atas. Verifikasi: 
 `audit.sql` baris 16 dan 18.
 
 ---
+## Bug 6:_synchronize membuang semua token sampai EOF
 
+## Bug 7: Keyword huruf kecil dianggap IDENT
+
+## Bug 8: Bug Kutip Tunggal di Dalam String
+
+## Bug 9: Operator Tidak Lengkap (<>)

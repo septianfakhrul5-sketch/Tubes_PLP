@@ -121,3 +121,33 @@ def test_tepi_subquery_from_tidak_melihat_tabel_saudara():
     # Spek 4.4: p belum ada saat subquery di FROM di-resolve.
     _, diags = resolve("SELECT p.id FROM a p, (SELECT q.id FROM b q WHERE q.id = p.id) d")
     assert any("'p'" in d.message and d.level == "error" for d in diags)
+
+def test_insert_select_di_resolve():
+    # Bug: _insert melewati SELECT karena if query bersarang di dalam if values.
+    script, _ = resolve("INSERT INTO t SELECT a FROM u")
+    assert cols(script)[0].resolved == "u"
+
+
+def test_kolom_tanpa_scope_tidak_crash():
+    # Bug: INSERT tidak membuat scope (spek 4.1); self.warning (typo) / scope None crash.
+    script, diags = resolve("INSERT INTO t VALUES (a)")
+    assert cols(script)[0].resolved is None
+    assert [d.level for d in diags] == ["warning"]
+
+
+def test_pesan_warning_ambigu_persis_spek():
+    # Spek 4.3 menulis pesan persis: kolom 'nama' ambigu tanpa skema.
+    _, diags = resolve("SELECT id FROM a, b")
+    assert diags[0].message == "kolom 'id' ambigu tanpa skema"
+
+def test_insert_select_tidak_crash_di_analyzer():
+    res = analyze_source("INSERT INTO arsip SELECT id FROM pesanan")
+    assert res.statements[0].tables == {"arsip": "C", "pesanan": "R"}
+
+def test_update_dan_baca_tabel_sama_jadi_RU():
+    res = analyze_source("UPDATE a SET x = 1 WHERE id IN (SELECT id FROM a)")
+    assert res.statements[0].tables == {"a": "RU"}
+
+def test_urutan_operasi_CRUD():
+    res = analyze_source("DELETE FROM a WHERE id IN (SELECT id FROM a)")
+    assert res.statements[0].tables == {"a": "RD"}
