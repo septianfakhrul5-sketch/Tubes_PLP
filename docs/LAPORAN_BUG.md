@@ -183,11 +183,29 @@ sesudahnya).
 dan `_delete` secara berdampingan, lalu menjalankan contoh di atas. Verifikasi: test regresi dan kasus
 `audit.sql` baris 16 dan 18.
 
----
+-- Bug 6-9 DItemukan oleh: Septian Fakhrul Hikam
+
 ## Bug 6:_synchronize membuang semua token sampai EOF
+    Akar masalah: _synchronize membuang token sampai EOF dan tidak pernah berhenti di batas statement. Pada panic mode (bab 6), parser membuang token sampai titik sinkronisasi lalu melanjutkan parsing. Di SQL titik amannya adalah ;, dan spesifikasi 6 meminta pembuangan sampai; dan termasuk berikutnya. Tanpa titik berhenti, satu error membuat seluruh sisa file hilang dari hasil.
+
+    Gimana solusinya?
+    Konsumsi token satu per satu dan return tepat setelah token SEMICOLON ikut dikonsumsi. Karena ; di dalam string sudah menjadi satu token STRING dari lexer, ia tidak memicu berhenti palsu.
 
 ## Bug 7: Keyword huruf kecil dianggap IDENT
+    Akar masalah: Lexer memeriksa apakah teks asli kata ada di KEYWORDS, padahal isi KEYWORDS hanya huruf besar. Akibatnya select, From, atau Where gagal cocok dan menjadi IDENT, bukan KEYWORD. Spesifikasi 2.2 meminta keyword tidak peka huruf besar/kecil dan nilai tokennya dinormalisasi ke huruf besar. Pembandingan harus memakai bentuk yang sudah dinormalisasi. Kata yang hanya diawali keyword (selection) tetap IDENT karena seluruh kata dibaca dulu baru dicek ke tabel keyword (bab 4: identifier vs reserved word).
 
+    Gimana solusinya?
+
+    Normalisasi dulu dengan text_upper = text.upper(), cek text_upper in KEYWORDS, lalu simpan text_upper sebagai nilai token KEYWORD. Token IDENT tetap memakai teks asli
 ## Bug 8: Bug Kutip Tunggal di Dalam String
+    Akar masalah: saat program bertemu dengan satu tanda kutip ('), program akan langsung melakukan break (berhenti membaca string). Padahal, spesifikasi meminta agar dua tanda kutip yang berurutan ('') di dalam string (seperti pada kata 'O''Brien') dianggap sebagai satu karakter kutip biasa, bukan penutup string
+
+    Gimana solusinya?
+    Harus dicek juga apakah karakter selanjutnya adalah kutip tunggal juga
 
 ## Bug 9: Operator Tidak Lengkap (<>)
+    Akar masalah: Spesifikasi bagian 2.5 menyatakan bahwa <> adalah salah satu operator valid dan sistem harus membaca operator terpanjang yang cocok (maximal munch). Pada kode awal yang kamu berikan, saat bertemu karakter <, program hanya mengecek apakah karakter selanjutnya adalah = (untuk menjadi <=). Jika diberikan <>, lexer akan gagal membacanya sebagai satu kesatuan
+
+    gimana solusinya?
+
+    Setelah < periksa karakter berikutnya secara berurutan: = menghasilkan <=, > menghasilkan <>, selain itu <. Lexer selalu mengambil operator terpanjang yang cocok (maximal munch, bab 4), jadi <> menjadi satu token OP, bukan < lalu >.
