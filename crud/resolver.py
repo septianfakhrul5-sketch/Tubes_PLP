@@ -181,7 +181,7 @@ class Resolver:
         entries = list(self.scope.entries.values()) if self.scope is not None else []       # TODO(2): Menambahkan qualifier None untuk mencari kolom tanpa qualifier
         if len(entries) == 1:
             col.resolved = _target_of(entries[0])
-        elif len(entries) == 0:
+        elif entries:
             self._warning(f"kolom '{col.name}' ambigu tanpa skema", col.line)
         else:
             self._warning(f"kolom '{col.name}' tidak punya tabel di scope", col.line)

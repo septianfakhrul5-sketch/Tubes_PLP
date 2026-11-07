@@ -252,7 +252,6 @@ class Parser:
         # OR (presedensi terendah) membungkus AND.
         left = self._and()
         while self._match_kw("OR"):
-            op = self._advance().value
             left = ast.BinaryOp(left, "OR", self._and())
         return left
 
