@@ -88,10 +88,10 @@ class Parser:
         return ast.Script(statements, errors)
 
     def _synchronize(self) -> None:
-        # Panic mode (Crafting Interpreters bab 6): buang token sampai
-        # titik aman, lalu lanjutkan parsing.
+        # Panic mode: buang token sampai dan termasuk ';' berikutnya.
         while not self._at_end():
-            self._advance()
+            if self._advance().type == T.SEMICOLON:
+                return
 
     def _statement(self):
         if self._check_kw("SELECT"):
@@ -176,6 +176,7 @@ class Parser:
             kind = "INNER"
         elif self._match_kw("LEFT"):
             kind = "LEFT"
+            self._match_kw("OUTER")     #Menambahkan parsing OUTER karena LEFT OUTER JOIN juga valid
         self._expect_kw("JOIN")
         source = self._table_ref()
         self._expect_kw("ON")
@@ -210,8 +211,7 @@ class Parser:
                 rows.append(self._value_row())
             return ast.Insert(table, columns, rows, None, line=start.line)
         if self._check_kw("SELECT"):
-            # TODO(T1): dukung INSERT INTO ... SELECT ... (SPESIFIKASI.md bagian 3 dan 5).
-            raise ParseError("INSERT ... SELECT belum didukung", self._peek())
+            return ast.Insert(table, columns, [], self._select(), line=start.line)      # TODO(T1): Menambahkan parsing INSERT ... SELECT
         raise ParseError("diharapkan VALUES atau SELECT", self._peek())
 
     def _value_row(self) -> list:
@@ -248,14 +248,20 @@ class Parser:
     def _expr(self):
         return self._logical()
 
-    def _logical(self):
-        # OR dan AND: operator logika biner, asosiatif kiri.
-        left = self._not()
-        while self._check_kw("AND", "OR"):
+    def _logical(self):     #_logical hanya mengurus OR dan _and memanggil AND 
+        # OR (presedensi terendah) membungkus AND.
+        left = self._and()
+        while self._match_kw("OR"):
             op = self._advance().value
-            left = ast.BinaryOp(left, op, self._not())
+            left = ast.BinaryOp(left, "OR", self._and())
         return left
 
+    def _and(self):
+        left = self._not()
+        while self._match_kw("AND"):
+            left = ast.BinaryOp(left, "AND", self._not())
+        return left
+    
     def _not(self):
         if self._match_kw("NOT"):
             return ast.UnaryOp("NOT", self._not())
