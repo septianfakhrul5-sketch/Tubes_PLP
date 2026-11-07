@@ -85,15 +85,11 @@ class Resolver:
             self._declare(source.alias, None, source.line)
 
     def _lookup(self, name: str) -> ScopeEntry | None:
-        """Cari nama di rantai scope."""
-        chain = []
         scope = self.scope
         while scope is not None:
-            chain.append(scope)
-            scope = scope.parent
-        for scope in reversed(chain):
             if name in scope.entries:
                 return scope.entries[name]
+            scope = scope.parent
         return None
 
     # ---- statement ------------------------------------------------------
@@ -120,9 +116,10 @@ class Resolver:
         self._pop()
 
     def _insert(self, ins: ast.Insert) -> None:
-        for row in ins.values:
-            for expr in row:
-                self._expr(expr)
+        if ins.values is not None:
+            for row in ins.values:
+                for expr in row:
+                    self._expr(expr)
         if ins.query is not None:
             self._select(ins.query)
 
@@ -139,6 +136,7 @@ class Resolver:
         self._push()
         self._declare_source(dele.table)
         self._expr(dele.where)
+        self._pop()
 
     # ---- ekspresi -------------------------------------------------------
     def _expr(self, expr) -> None:
@@ -177,8 +175,13 @@ class Resolver:
             else:
                 col.resolved = _target_of(entry)
             return
-        # TODO(T2): kolom tanpa qualifier (SPESIFIKASI.md bagian 4.3).
-        #   - tepat satu tabel di scope terdalam -> isi col.resolved
-        #   - lebih dari satu tabel              -> warning "ambigu tanpa skema"
-        #   - tidak ada tabel                    -> warning
-        pass
+
+        current_entries = self.scope.entries if self.scope else[]
+
+        if len(current_entries) == 1:
+            entry = list(current_entries.values())[0]
+            col.resolved = _target_of(entry)
+        elif len(current_entries) > 1:
+            self._warning("Kolom ambigu tanpa skema", col.line)
+        else:
+            self._warning("kolom tidak memiliki tabel acuan", col.line)
