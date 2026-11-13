@@ -37,14 +37,14 @@ Untuk tiap kasus: SQL-nya, kesalahan regex, dan mengapa parser benar (kaitkan de
 lexing, parsing, atau resolusi).
 
 1.SQL di dalam komentar atau string dianggap statement
-    Kesalahan regex: melaporkan pelanggan D, padahal itu komentar. Ini kemungkinan sumber FP ('laporan_penjualan.sql', 2, 'pelanggan', 'D') dan rahasia R.
+    Kesalahan regex: melaporkan pelanggan D, padahal itu komentar.
 
 2.Subquery di UPDATE/DELETE diberi operasi statement 
     Mengapa parser benar: lexer (Crafting Interpreters bab 4) membuang komentar sebelum token terbentuk dan memperlakukan isi '...' sebagai satu token STRING. Parser tidak pernah melihat teks itu. Regex bekerja pada teks datar tanpa konsep token.
 
 3.Nomor baris salah dan statement rusak ikut dihitung
     UPDATE pelanggan_lama SET x = (SELECT y FROM crm.alamat);
-    Kesalahan regex: tidak membedakan tabel target dan tabel yang hanya dibaca lewat subquery, sehingga operasinya bisa tertukar atau ganda (kemungkinan FP crm.alamat R dan pelanggan_lama U di pemeliharaan.sql).
+    Kesalahan regex: tidak membedakan tabel target dan tabel yang hanya dibaca lewat subquery, sehingga operasinya bisa tertukar atau ganda.
 
     Mengapa parser benar: grammar punya struktur bersarang. Parser mengenali (SELECT ...) sebagai node Subquery di dalam Update, dan analyzer menerapkan aturan “subquery selalu R” pada AST. Regex tidak bisa merepresentasikan nesting.
 
